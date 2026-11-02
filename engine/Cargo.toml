@@ -1,0 +1,21 @@
+[package]
+name = "hexchess_engine"
+version = "1.0.0"
+edition = "2021"
+description = "Hexagonal chess (Gliński and McCooey variants): rules engine and AI, compiled to WebAssembly"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# Deliberately empty: the project has ZERO crate dependencies.
+[dependencies]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 1
