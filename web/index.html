@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f1ebe2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121519" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Play Gliński's and McCooey's hexagonal chess in your browser against a Rust engine compiled to WebAssembly.">
+<title>Hexchess · Hexagonal chess</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23ecd3a8' d='M16 1.5 28.6 8.8 16 16 3.4 8.8z'/%3E%3Cpath fill='%239a6a3f' d='M3.4 8.8 16 16v14.5L3.4 23.2z'/%3E%3Cpath fill='%23cfa168' d='M28.6 8.8v14.4L16 30.5V16z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.9"/><path d="M12 17.3v.01"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H10"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H14"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M7 20V5"/><path d="m3.5 8.5 3.5-3.5 3.5 3.5"/><path d="M17 4v15"/><path d="m13.5 15.5 3.5 3.5 3.5-3.5"/></symbol>
+  <symbol id="i-first" viewBox="0 0 24 24"><path d="M6.5 5.5v13"/><path d="m17 6-6 6 6 6"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+  <symbol id="i-last" viewBox="0 0 24 24"><path d="M17.5 5.5v13"/><path d="m7 6 6 6-6 6"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 14.5V3.5"/><path d="m7.5 8 4.5-4.5L16.5 8"/><path d="M5 13v5.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V13"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/><path d="M15.5 5.5V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8.5a2 2 0 0 0 2 2h.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.2 2.7 17.6A2 2 0 0 0 4.4 20.6h15.2a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.2"/><path d="M12 17v.01"/></symbol>
+</svg>
+
+<div class="app" id="app" data-state="loading">
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path class="bm-a" d="M16 1.5 28.6 8.8 16 16 3.4 8.8z"/>
+        <path class="bm-c" d="M3.4 8.8 16 16v14.5L3.4 23.2z"/>
+        <path class="bm-b" d="M28.6 8.8v14.4L16 30.5V16z"/>
+      </svg>
+      <div class="brand-text">
+        <span class="brand-name">Hexchess</span>
+        <span class="brand-variant"><span class="bv-long" id="brand-variant">Hexagonal chess</span><span class="bv-short" id="brand-variant-short"></span></span>
+      </div>
+    </div>
+    <nav class="topbar-actions" aria-label="Game">
+      <button type="button" class="btn btn-accent" id="btn-new" title="New game (N)">
+        <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span class="btn-label">New game</span>
+      </button>
+      <button type="button" class="btn btn-icon" id="btn-help" title="How to play (H)" aria-label="How to play">
+        <svg class="icon" aria-hidden="true"><use href="#i-help"/></svg>
+      </button>
+      <button type="button" class="btn btn-icon" id="btn-settings" title="Settings (S)" aria-label="Settings">
+        <svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <section class="stage" aria-label="Board">
+      <div class="board-holder">
+        <svg id="board" class="board" role="application" aria-label="Hexagonal chess board" aria-describedby="status-main"></svg>
+        <div class="board-loading" aria-hidden="true"><span class="spinner"></span><span>Loading engine…</span></div>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="Game information">
+      <section class="card status-card" id="status-card" data-tone="normal">
+        <div class="status-top">
+          <span class="turn-chip" id="turn-chip" data-side="w" aria-hidden="true"><svg viewBox="0 0 32 28" aria-hidden="true"><polygon points="8.5,1.5 23.5,1.5 30.5,14 23.5,26.5 8.5,26.5 1.5,14"/></svg></span>
+          <div class="status-texts">
+            <p class="status-main" id="status-main" role="status" aria-live="polite">Loading the engine…</p>
+            <p class="status-sub" id="status-sub"></p>
+          </div>
+          <div class="thinking" id="thinking" hidden title="The computer is thinking"><i></i><i></i><i></i></div>
+        </div>
+        <div class="eval" id="eval" hidden>
+          <div class="eval-track" aria-hidden="true"><div class="eval-white" id="eval-white"></div></div>
+          <span class="eval-score" id="eval-score" title="Engine evaluation, White's point of view">0.00</span>
+        </div>
+        <p class="search-info" id="search-info" hidden></p>
+        <div class="review-bar" id="review-bar" hidden>
+          <span class="review-text" id="review-text"></span>
+          <span class="review-actions">
+            <button type="button" class="btn btn-small btn-accent" id="btn-resume">Play from here</button>
+            <button type="button" class="btn btn-small" id="btn-live">Back to game</button>
+          </span>
+        </div>
+      </section>
+
+      <section class="card players-card" aria-label="Players">
+        <div class="player" id="player-top" data-side="b">
+          <span class="player-token" aria-hidden="true"><svg viewBox="0 0 32 28" aria-hidden="true"><polygon points="8.5,1.5 23.5,1.5 30.5,14 23.5,26.5 8.5,26.5 1.5,14"/></svg></span>
+          <span class="player-who"><span class="player-name">Black</span><span class="player-sub"></span></span>
+          <span class="player-captures" aria-label="Captured pieces"></span>
+          <span class="player-adv"></span>
+        </div>
+        <div class="player" id="player-bottom" data-side="w">
+          <span class="player-token" aria-hidden="true"><svg viewBox="0 0 32 28" aria-hidden="true"><polygon points="8.5,1.5 23.5,1.5 30.5,14 23.5,26.5 8.5,26.5 1.5,14"/></svg></span>
+          <span class="player-who"><span class="player-name">White</span><span class="player-sub"></span></span>
+          <span class="player-captures" aria-label="Captured pieces"></span>
+          <span class="player-adv"></span>
+        </div>
+      </section>
+
+      <section class="card moves-card" aria-label="Moves">
+        <div class="card-head">
+          <h2>Moves</h2>
+          <span class="card-meta" id="moves-meta"></span>
+        </div>
+        <div class="move-list" id="move-list" role="list"></div>
+        <div class="nav-row" role="toolbar" aria-label="Move navigation">
+          <button type="button" class="btn btn-icon" id="nav-first" title="Start position (Home)" aria-label="Start position"><svg class="icon" aria-hidden="true"><use href="#i-first"/></svg></button>
+          <button type="button" class="btn btn-icon" id="nav-prev" title="Previous move (←)" aria-label="Previous move"><svg class="icon" aria-hidden="true"><use href="#i-prev"/></svg></button>
+          <button type="button" class="btn btn-icon" id="nav-next" title="Next move (→)" aria-label="Next move"><svg class="icon" aria-hidden="true"><use href="#i-next"/></svg></button>
+          <button type="button" class="btn btn-icon" id="nav-last" title="Latest move (End)" aria-label="Latest move"><svg class="icon" aria-hidden="true"><use href="#i-last"/></svg></button>
+          <span class="nav-sep" aria-hidden="true"></span>
+          <button type="button" class="btn btn-icon" id="btn-flip" title="Flip the board (F)" aria-label="Flip the board"><svg class="icon" aria-hidden="true"><use href="#i-flip"/></svg></button>
+        </div>
+      </section>
+
+      <section class="actions" aria-label="Actions">
+        <button type="button" class="btn" id="btn-undo" title="Take back (U)"><svg class="icon" aria-hidden="true"><use href="#i-undo"/></svg><span class="btn-label">Undo</span></button>
+        <button type="button" class="btn" id="btn-redo" title="Replay an undone move"><svg class="icon" aria-hidden="true"><use href="#i-redo"/></svg><span class="btn-label">Redo</span></button>
+        <button type="button" class="btn" id="btn-pause" hidden><svg class="icon i-pause" aria-hidden="true"><use href="#i-pause"/></svg><svg class="icon i-play" aria-hidden="true"><use href="#i-play"/></svg><span class="btn-label">Pause</span></button>
+        <button type="button" class="btn" id="btn-position" title="Copy or load a FEN, export the game"><svg class="icon" aria-hidden="true"><use href="#i-share"/></svg><span class="btn-label">FEN &amp; export</span></button>
+      </section>
+    </aside>
+  </main>
+
+  <div class="fatal" id="fatal" role="alert" hidden>
+    <div class="fatal-card">
+      <svg class="icon fatal-icon" aria-hidden="true"><use href="#i-alert"/></svg>
+      <h1>The chess engine could not be loaded</h1>
+      <p>Hexchess plays with an engine compiled to WebAssembly (<code>hexchess.wasm</code>). Browsers only load it when the page is served over http(s) — opening <code>web/index.html</code> straight from disk does not work.</p>
+      <ol>
+        <li>Run <code>npm run serve</code> in the project folder and open <b>http://localhost:8080/</b>, or</li>
+        <li>open the single-file build <code>dist/hexchess.html</code>, which embeds the engine and also works from disk (create it with <code>npm run build</code>).</li>
+      </ol>
+      <details>
+        <summary>Technical details</summary>
+        <pre id="fatal-detail"></pre>
+      </details>
+      <button type="button" class="btn btn-accent" id="fatal-retry">Try again</button>
+    </div>
+  </div>
+</div>
+
+<dialog class="dialog" id="dlg-new" aria-labelledby="dlg-new-title">
+  <form class="dialog-form" id="form-new" autocomplete="off">
+    <header class="dialog-head">
+      <h2 id="dlg-new-title">New game</h2>
+      <button type="button" class="btn btn-icon" data-close aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="dialog-body">
+      <div class="field">
+        <span class="field-label">Variant</span>
+        <div class="variant-cards" id="new-variants"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Opponent</span>
+        <div class="segmented">
+          <label><input type="radio" name="mode" value="hvc"><span>Computer</span></label>
+          <label><input type="radio" name="mode" value="hvh"><span>Two players</span></label>
+          <label><input type="radio" name="mode" value="cvc"><span>Demo</span></label>
+        </div>
+      </div>
+      <div class="field" data-when="hvc">
+        <span class="field-label">You play</span>
+        <div class="segmented">
+          <label><input type="radio" name="side" value="white"><span><svg class="tok tok-w" viewBox="0 0 32 28" aria-hidden="true"><polygon points="8.5,1.5 23.5,1.5 30.5,14 23.5,26.5 8.5,26.5 1.5,14"/></svg>White</span></label>
+          <label><input type="radio" name="side" value="black"><span><svg class="tok tok-b" viewBox="0 0 32 28" aria-hidden="true"><polygon points="8.5,1.5 23.5,1.5 30.5,14 23.5,26.5 8.5,26.5 1.5,14"/></svg>Black</span></label>
+          <label><input type="radio" name="side" value="random"><span><svg class="tok tok-r" viewBox="0 0 32 28" aria-hidden="true"><polygon class="half-w" points="16,1.5 8.5,1.5 1.5,14 8.5,26.5 16,26.5"/><polygon class="half-b" points="16,1.5 23.5,1.5 30.5,14 23.5,26.5 16,26.5"/><polygon class="edge" points="8.5,1.5 23.5,1.5 30.5,14 23.5,26.5 8.5,26.5 1.5,14"/></svg>Random</span></label>
+        </div>
+      </div>
+      <div class="field" data-when="hvc cvc">
+        <label class="field-label" for="new-level">Computer strength</label>
+        <div class="level-row">
+          <input type="range" id="new-level" name="level" min="1" max="8" step="1" value="3">
+          <output class="level-out" id="new-level-out" for="new-level"></output>
+        </div>
+      </div>
+      <label class="switch" data-when="hvh"><input type="checkbox" name="autoflip"><span class="switch-ui" aria-hidden="true"></span><span>Turn the board after every move</span></label>
+      <p class="field-note" data-when="cvc">The computer plays both sides. Pause, step back or take over at any time.</p>
+    </div>
+    <footer class="dialog-foot">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn btn-accent">Start game</button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="dlg-settings" aria-labelledby="dlg-settings-title">
+  <form class="dialog-form" id="form-settings" autocomplete="off">
+    <header class="dialog-head">
+      <h2 id="dlg-settings-title">Settings</h2>
+      <button type="button" class="btn btn-icon" data-close aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="dialog-body">
+      <div class="field">
+        <span class="field-label">Board</span>
+        <div class="theme-grid" id="theme-grid"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Appearance</span>
+        <div class="segmented">
+          <label><input type="radio" name="ui" value="auto"><span>System</span></label>
+          <label><input type="radio" name="ui" value="light"><span>Light</span></label>
+          <label><input type="radio" name="ui" value="dark"><span>Dark</span></label>
+        </div>
+      </div>
+      <div class="field toggles">
+        <label class="switch"><input type="checkbox" name="coords"><span class="switch-ui" aria-hidden="true"></span><span>Show coordinates</span></label>
+        <label class="switch"><input type="checkbox" name="legal"><span class="switch-ui" aria-hidden="true"></span><span>Show legal moves</span></label>
+        <label class="switch"><input type="checkbox" name="anim"><span class="switch-ui" aria-hidden="true"></span><span>Animate moves</span></label>
+        <label class="switch"><input type="checkbox" name="sound"><span class="switch-ui" aria-hidden="true"></span><span>Sound effects</span></label>
+        <label class="switch"><input type="checkbox" name="evalbar"><span class="switch-ui" aria-hidden="true"></span><span>Show the engine's evaluation</span></label>
+      </div>
+    </div>
+    <footer class="dialog-foot">
+      <button type="submit" class="btn btn-accent">Done</button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog class="dialog dialog-wide" id="dlg-help" aria-labelledby="dlg-help-title">
+  <div class="dialog-form">
+    <header class="dialog-head">
+      <h2 id="dlg-help-title">How to play</h2>
+      <div class="tabs" id="help-tabs" role="tablist" aria-label="Variant"></div>
+      <button type="button" class="btn btn-icon" data-close aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="dialog-body help-body" id="help-body"></div>
+  </div>
+</dialog>
+
+<dialog class="dialog dialog-over" id="dlg-over" aria-labelledby="over-title">
+  <div class="dialog-form">
+    <div class="over-art" aria-hidden="true"><span class="over-hex"></span></div>
+    <h2 id="over-title">Game over</h2>
+    <p class="over-score" id="over-score">½–½</p>
+    <p class="over-detail" id="over-detail"></p>
+    <footer class="dialog-foot center">
+      <button type="button" class="btn" id="over-review">Review game</button>
+      <button type="button" class="btn btn-accent" id="over-new">New game</button>
+    </footer>
+  </div>
+</dialog>
+
+<dialog class="dialog" id="dlg-position" aria-labelledby="dlg-position-title">
+  <div class="dialog-form">
+    <header class="dialog-head">
+      <h2 id="dlg-position-title">FEN &amp; export</h2>
+      <button type="button" class="btn btn-icon" data-close aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="dialog-body">
+      <div class="field">
+        <label class="field-label" for="fen-current">Current position</label>
+        <div class="input-row">
+          <input type="text" class="mono" id="fen-current" readonly spellcheck="false">
+          <button type="button" class="btn" id="fen-copy"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span class="btn-label">Copy</span></button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="fen-input">Load a position (FEN)</label>
+        <textarea class="mono" id="fen-input" rows="2" spellcheck="false" placeholder="b/qbk/n1b1n/r5r/ppppppppp/11/5P5/4P1P4/3P1B1P3/2P2B2P2/1PRNQBKNRP1 w - 0 1"></textarea>
+        <div class="input-row">
+          <select id="fen-variant" aria-label="Variant for this position"></select>
+          <button type="button" class="btn btn-accent" id="fen-load">Load position</button>
+        </div>
+        <p class="field-msg" id="fen-msg" role="alert"></p>
+      </div>
+      <div class="field">
+        <label class="field-label" for="export-text">Game record</label>
+        <textarea class="mono" id="export-text" rows="6" readonly spellcheck="false"></textarea>
+        <div class="input-row end">
+          <button type="button" class="btn" id="export-copy"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span class="btn-label">Copy game</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<noscript><p class="noscript">Hexchess needs JavaScript (and WebAssembly) to run.</p></noscript>
+<script>
+/* Start-up guard. A classic script, so it also runs where the module app cannot: browsers
+   refuse to load JavaScript modules into a page opened from file://, which would otherwise
+   leave an endless "Loading" spinner. Shows the error panel instead. The single-file build
+   inlines the app (window.__hexchess then exists), so this never fires there. */
+(function () {
+  function fail(detail) {
+    var app = document.getElementById('app');
+    var panel = document.getElementById('fatal');
+    if (window.__hexchess || !app || !panel || app.dataset.state !== 'loading') return;
+    app.dataset.state = 'error';
+    panel.hidden = false;
+    var d = document.getElementById('fatal-detail');
+    if (d) d.textContent = detail;
+    var s = document.getElementById('status-main');
+    if (s) s.textContent = 'Engine unavailable';
+    var b = document.getElementById('fatal-retry');
+    if (b) b.onclick = function () { location.reload(); };
+    var gear = document.getElementById('btn-settings');
+    if (gear) gear.hidden = true; // nothing behind it without the app script
+  }
+  var fromDisk = location.protocol === 'file:';
+  window.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'SCRIPT' && /js\/main\.js$/.test(t.src || '')) {
+      fail('The app script js/main.js could not be loaded' + (fromDisk ? ': browsers do not run JavaScript modules in pages opened from file://.' : '.'));
+    }
+  }, true);
+  if (fromDisk) {
+    setTimeout(function () { fail('The page was opened from file://, where browsers do not run JavaScript modules.'); }, 2500);
+  }
+})();
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
